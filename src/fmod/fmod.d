@@ -357,7 +357,7 @@ class System {
     assert(FMOD_System_GetOutput(this.sys, &output) == FMOD_RESULT.OK);
     return output;
   }
- 
+
   int GetNumDrivers() {
     int num;
     assert(FMOD_System_GetNumDrivers(this.sys, &num) == FMOD_RESULT.OK);
@@ -434,7 +434,7 @@ class System {
 
   void SetStreamBufferSize(StreamBufferSize *size) {
     assert(FMOD_System_SetStreamBufferSize(this.sys,
-        size.filebuffersize, size.filebuffersizetype) == FMOD_RESULT.OK); 
+        size.filebuffersize, size.filebuffersizetype) == FMOD_RESULT.OK);
   }
 
   StreamBufferSize GetStreamBufferSize() {
