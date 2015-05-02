@@ -353,6 +353,11 @@ enum FMOD_TAGDATATYPE {
 	FORCEINT = 65536
 }
 
+// TODO: finish this up
+enum FMOD_INITFLAGS : uint {
+  NORMAL = 0,
+}
+
 struct FMOD_VECTOR {
 	float x;
 	float y;

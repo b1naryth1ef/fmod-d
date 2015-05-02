@@ -466,7 +466,7 @@ class System {
     return num;
   }
 
-  Sound CreateSound(string name_or_data, uint mode, FMOD_CREATESOUNDEXINFO *exinfo) {
+  Sound CreateSound(string name_or_data, uint mode=0, FMOD_CREATESOUNDEXINFO *exinfo=null) {
     return new Sound(this, name_or_data, mode, exinfo);
   }
 }
@@ -480,7 +480,7 @@ class Sound {
     assert(FMOD_System_CreateSound(this.sys.sys, name.ptr, mode, exinfo, &this.sound) == FMOD_RESULT.OK);
   }
 
-  void play(FMOD_CHANNELGROUP *group, bool paused, FMOD_CHANNEL *channel) {
+  void play(FMOD_CHANNELGROUP *group=null, bool paused=false, FMOD_CHANNEL *channel=null) {
     assert(FMOD_System_PlaySound(this.sys.sys, this.sound, group, cast(int)paused, &channel) == FMOD_RESULT.OK);
   }
 }
