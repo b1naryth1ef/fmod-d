@@ -72,13 +72,15 @@ void loadFMOD() {
 }
 
 /*
-  Wraps the FMOD_System C struct
-*/
+   Wraps the FMOD_System C struct
+ */
 class System {
   FMOD_SYSTEM *sys;
 
   this() {
-    valid(FMOD_System_Create(&this.sys));
+    this.sys = new FMOD_SYSTEM;
+    auto res = FMOD_System_Create(&this.sys);
+     valid(res);
   }
 
   ~this() {
@@ -206,8 +208,11 @@ class Sound {
   FMOD_SOUND  *sound;
 
   this(System sys, string name, uint mode, FMOD_CREATESOUNDEXINFO *exinfo) {
-    valid(FMOD_System_CreateSound(sys.sys, name.ptr, mode, exinfo, &this.sound));
-    valid(FMOD_Sound_SetUserData(this.sound, cast(void*)sys));
+    this.sound = new FMOD_SOUND;
+    auto res1 = FMOD_System_CreateSound(sys.sys, name.ptr, mode, exinfo, &this.sound);
+    valid(res1);
+    auto res2 = FMOD_Sound_SetUserData(this.sound, cast(void*)sys);
+    valid(res2);
   }
 
   ~this() {
@@ -409,5 +414,12 @@ class Channel {
     valid(FMOD_Channel_GetLowPassGain(this.channel, &gain));
     return gain;
   }
+}
+
+unittest {
+  loadFMOD();
+  System sys = new System();
+  sys.init(10);
+  delete(sys);
 }
 
