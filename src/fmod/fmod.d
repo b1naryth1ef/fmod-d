@@ -67,6 +67,10 @@ void valid(FMOD_RESULT result, string msg = null) {
   }
 }
 
+void loadFMOD() {
+  DerelictFmod.load();
+}
+
 /*
   Wraps the FMOD_System C struct
 */
