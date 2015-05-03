@@ -80,7 +80,7 @@ class System {
   this() {
     this.sys = new FMOD_SYSTEM;
     auto res = FMOD_System_Create(&this.sys);
-     valid(res);
+    valid(res);
   }
 
   ~this() {
@@ -144,7 +144,8 @@ class System {
   }
 
   void init(int maxchannels, uint flags=FMOD_INIT_NORMAL, void *extradriverdata=null) {
-    valid(FMOD_System_Init(this.sys, maxchannels, flags, extradriverdata));
+    auto res = FMOD_System_Init(this.sys, maxchannels, flags, extradriverdata);
+    valid(res);
   }
 
   void close() {
