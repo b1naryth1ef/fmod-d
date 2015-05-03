@@ -50,6 +50,17 @@ extern (C) {
   FMOD_RESULT FMOD_System_CreateSound (FMOD_SYSTEM* system, const(char)* name_or_data, uint mode, FMOD_CREATESOUNDEXINFO* exinfo, FMOD_SOUND** sound);
   FMOD_RESULT FMOD_System_PlaySound (FMOD_SYSTEM* system, FMOD_SOUND* sound, FMOD_CHANNELGROUP* channelgroup, int paused, FMOD_CHANNEL** channel);
 
+  // FMOD_Sound
+  FMOD_RESULT FMOD_Sound_Release (FMOD_SOUND* sound);
+  FMOD_RESULT FMOD_Sound_GetSystemObject (FMOD_SOUND* sound, FMOD_SYSTEM** system);
+  FMOD_RESULT FMOD_Sound_SetDefaults (FMOD_SOUND* sound, float frequency, int priority);
+  FMOD_RESULT FMOD_Sound_GetDefaults (FMOD_SOUND* sound, float* frequency, int* priority);
+  FMOD_RESULT FMOD_Sound_Set3DMinMaxDistance (FMOD_SOUND* sound, float min, float max);
+  FMOD_RESULT FMOD_Sound_Get3DMinMaxDistance (FMOD_SOUND* sound, float* min, float* max);
+  FMOD_RESULT FMOD_Sound_Set3DConeSettings (FMOD_SOUND* sound, float insideconeangle, float outsideconeangle, float outsidevolume);
+  FMOD_RESULT FMOD_Sound_Get3DConeSettings (FMOD_SOUND* sound, float* insideconeangle, float* outsideconeangle, float* outsidevolume);
+  FMOD_RESULT FMOD_Sound_Set3DCustomRolloff (FMOD_SOUND* sound, FMOD_VECTOR* points, int numpoints);
+
   // TO BE IMPLEMENTTED:
   FMOD_RESULT FMOD_System_Set3DListenerAttributes (FMOD_SYSTEM* system, int listener, const(FMOD_VECTOR)* pos, const(FMOD_VECTOR)* vel, const(FMOD_VECTOR)* forward, const(FMOD_VECTOR)* up);
   FMOD_RESULT FMOD_System_Get3DListenerAttributes (FMOD_SYSTEM* system, int listener, FMOD_VECTOR* pos, FMOD_VECTOR* vel, FMOD_VECTOR* forward, FMOD_VECTOR* up);
@@ -91,17 +102,8 @@ extern (C) {
   FMOD_RESULT FMOD_System_GetNetworkTimeout (FMOD_SYSTEM* system, int* timeout);
   FMOD_RESULT FMOD_System_SetUserData (FMOD_SYSTEM* system, void* userdata);
   FMOD_RESULT FMOD_System_GetUserData (FMOD_SYSTEM* system, void** userdata);
-  FMOD_RESULT FMOD_Sound_Release (FMOD_SOUND* sound);
-  FMOD_RESULT FMOD_Sound_GetSystemObject (FMOD_SOUND* sound, FMOD_SYSTEM** system);
   FMOD_RESULT FMOD_Sound_Lock (FMOD_SOUND* sound, uint offset, uint length, void** ptr1, void** ptr2, uint* len1, uint* len2);
   FMOD_RESULT FMOD_Sound_Unlock (FMOD_SOUND* sound, void* ptr1, void* ptr2, uint len1, uint len2);
-  FMOD_RESULT FMOD_Sound_SetDefaults (FMOD_SOUND* sound, float frequency, int priority);
-  FMOD_RESULT FMOD_Sound_GetDefaults (FMOD_SOUND* sound, float* frequency, int* priority);
-  FMOD_RESULT FMOD_Sound_Set3DMinMaxDistance (FMOD_SOUND* sound, float min, float max);
-  FMOD_RESULT FMOD_Sound_Get3DMinMaxDistance (FMOD_SOUND* sound, float* min, float* max);
-  FMOD_RESULT FMOD_Sound_Set3DConeSettings (FMOD_SOUND* sound, float insideconeangle, float outsideconeangle, float outsidevolume);
-  FMOD_RESULT FMOD_Sound_Get3DConeSettings (FMOD_SOUND* sound, float* insideconeangle, float* outsideconeangle, float* outsidevolume);
-  FMOD_RESULT FMOD_Sound_Set3DCustomRolloff (FMOD_SOUND* sound, FMOD_VECTOR* points, int numpoints);
   FMOD_RESULT FMOD_Sound_Get3DCustomRolloff (FMOD_SOUND* sound, FMOD_VECTOR** points, int* numpoints);
   FMOD_RESULT FMOD_Sound_SetSubSound (FMOD_SOUND* sound, int index, FMOD_SOUND* subsound);
   FMOD_RESULT FMOD_Sound_GetSubSound (FMOD_SOUND* sound, int index, FMOD_SOUND** subsound);
@@ -334,6 +336,50 @@ struct Settings3D {
   float dopplerscale, distancefactor, rolloffscale;
 }
 
+struct SoundDefaults {
+  float  frequency;
+  int    priority;
+}
+
+struct Sound3DDistance {
+  float min, max;
+}
+
+struct Sound3DConeSettings {
+  float insideangle, outsideangle, outsidevolume;
+}
+
+struct SoundFormat {
+  FMOD_SOUND_TYPE *type;
+  FMOD_SOUND_FORMAT *format;
+  int channels, bits;
+}
+
+struct ReverbProperties {
+  int    instance;
+  float  wet;
+}
+
+class FMODException : Exception {
+  FMOD_RESULT result;
+
+  this(FMOD_RESULT result, string msg = null, Throwable next = null) {
+    this.result = result;
+    super(msg, next);
+  }
+
+  this(FMOD_RESULT result, string msg, string file, size_t line, Throwable next = null) {
+    this.result = result;
+    super(msg, file, line, next);
+  }
+}
+
+void valid(FMOD_RESULT result, string msg = null) {
+  if (result != FMOD_RESULT.OK) {
+    throw new FMODException(result, msg);
+  }
+}
+
 /*
   Wraps the FMOD_System C struct
 */
@@ -341,226 +387,336 @@ class System {
   FMOD_SYSTEM *sys;
 
   this() {
-    assert(FMOD_System_Create(&this.sys) == FMOD_RESULT.OK);
+     valid(FMOD_System_Create(&this.sys));
   }
 
   ~this() {
-    assert(FMOD_System_Release(this.sys) == FMOD_RESULT.OK);
+    valid(FMOD_System_Release(this.sys));
   }
 
-  void SetOutput(FMOD_OUTPUTTYPE output) {
-    assert(FMOD_System_SetOutput(this.sys, output) == FMOD_RESULT.OK);
+  void setOutput(FMOD_OUTPUTTYPE output) {
+    valid(FMOD_System_SetOutput(this.sys, output));
   }
 
-  FMOD_OUTPUTTYPE GetOutput() {
+  FMOD_OUTPUTTYPE getOutput() {
     FMOD_OUTPUTTYPE output;
-    assert(FMOD_System_GetOutput(this.sys, &output) == FMOD_RESULT.OK);
+    valid(FMOD_System_GetOutput(this.sys, &output));
     return output;
   }
 
-  int GetNumDrivers() {
+  int getNumDrivers() {
     int num;
-    assert(FMOD_System_GetNumDrivers(this.sys, &num) == FMOD_RESULT.OK);
+    valid(FMOD_System_GetNumDrivers(this.sys, &num));
     return num;
   }
 
-  void SetDriver(int driver) {
-    assert(FMOD_System_SetDriver(this.sys, driver) == FMOD_RESULT.OK);
+  void setDriver(int driver) {
+    valid(FMOD_System_SetDriver(this.sys, driver));
   }
 
-  int GetDriver() {
+  int getDriver() {
     int driver;
-    assert(FMOD_System_GetDriver(this.sys, &driver) == FMOD_RESULT.OK);
+    valid(FMOD_System_GetDriver(this.sys, &driver));
     return driver;
   }
 
-  void SetSoftwareChannels(int num) {
-    assert(FMOD_System_SetSoftwareChannels(this.sys, num) == FMOD_RESULT.OK);
+  void setSoftwareChannels(int num) {
+    valid(FMOD_System_SetSoftwareChannels(this.sys, num));
   }
 
-  int GetSoftwareChannels() {
+  int getSoftwareChannels() {
     int num;
-    assert(FMOD_System_GetSoftwareChannels(this.sys, &num) == FMOD_RESULT.OK);
+    valid(FMOD_System_GetSoftwareChannels(this.sys, &num));
     return num;
   }
 
-  void SetSoftwareFormat(SoftwareFormat *fmt) {
-    assert(FMOD_System_SetSoftwareFormat(this.sys,
-        fmt.samplerate, fmt.speakermode, fmt.numrawspeakers) == FMOD_RESULT.OK);
+  void setSoftwareFormat(SoftwareFormat *fmt) {
+    valid(FMOD_System_SetSoftwareFormat(this.sys, fmt.samplerate, fmt.speakermode, fmt.numrawspeakers));
   }
 
-  SoftwareFormat GetSoftwareFormat() {
+  SoftwareFormat getSoftwareFormat() {
     SoftwareFormat fmt;
-    assert(FMOD_System_GetSoftwareFormat(this.sys,
-        &fmt.samplerate, &fmt.speakermode, &fmt.numrawspeakers) == FMOD_RESULT.OK);
+    valid(FMOD_System_GetSoftwareFormat(this.sys, &fmt.samplerate, &fmt.speakermode, &fmt.numrawspeakers));
     return fmt;
   }
 
-  void SetAdvancedSettings(FMOD_ADVANCEDSETTINGS *settings) {
-    assert(FMOD_System_SetAdvancedSettings(this.sys, settings) == FMOD_RESULT.OK);
+  void setAdvancedSettings(FMOD_ADVANCEDSETTINGS *settings) {
+    valid(FMOD_System_SetAdvancedSettings(this.sys, settings));
   }
 
-  FMOD_ADVANCEDSETTINGS GetAdvancedSettings() {
+  FMOD_ADVANCEDSETTINGS getAdvancedSettings() {
     FMOD_ADVANCEDSETTINGS settings;
-    assert(FMOD_System_GetAdvancedSettings(this.sys, &settings) == FMOD_RESULT.OK);
+    valid(FMOD_System_GetAdvancedSettings(this.sys, &settings));
     return settings;
   }
 
   void init(int maxchannels, uint flags, void *extradriverdata) {
-    assert(FMOD_System_Init(this.sys, maxchannels, flags, extradriverdata) == FMOD_RESULT.OK);
+    valid(FMOD_System_Init(this.sys, maxchannels, flags, extradriverdata));
   }
 
   void close() {
-    assert(FMOD_System_Close(this.sys) == FMOD_RESULT.OK);
+    valid(FMOD_System_Close(this.sys));
   }
 
   void update() {
-    assert(FMOD_System_Update(this.sys) == FMOD_RESULT.OK);
+    valid(FMOD_System_Update(this.sys));
   }
 
-  void SetSpeakerPosition(SpeakerPosition *pos) {
-    assert(FMOD_System_SetSpeakerPosition(this.sys,
-        pos.speaker, pos.x, pos.y, cast(int)pos.active) == FMOD_RESULT.OK);
+  void setSpeakerPosition(SpeakerPosition *pos) {
+    valid(FMOD_System_SetSpeakerPosition(this.sys, pos.speaker, pos.x, pos.y, cast(int)pos.active));
   }
 
-  SpeakerPosition GetSpeakerPosition() {
+  SpeakerPosition getSpeakerPosition() {
     SpeakerPosition pos;
     int active;
 
-    assert(FMOD_System_GetSpeakerPosition(this.sys, pos.speaker, &pos.x, &pos.y, &active) == FMOD_RESULT.OK);
+    valid(FMOD_System_GetSpeakerPosition(this.sys, pos.speaker, &pos.x, &pos.y, &active));
     pos.active = cast(bool)active;
     return pos;
   }
 
-  void SetStreamBufferSize(StreamBufferSize *size) {
-    assert(FMOD_System_SetStreamBufferSize(this.sys,
-        size.filebuffersize, size.filebuffersizetype) == FMOD_RESULT.OK);
+  void setStreamBufferSize(StreamBufferSize *size) {
+    valid(FMOD_System_SetStreamBufferSize(this.sys, size.filebuffersize, size.filebuffersizetype));
   }
 
-  StreamBufferSize GetStreamBufferSize() {
+  StreamBufferSize getStreamBufferSize() {
     StreamBufferSize size;
-    assert(FMOD_System_GetStreamBufferSize(this.sys,
-        &size.filebuffersize, &size.filebuffersizetype) == FMOD_RESULT.OK);
+    valid(FMOD_System_GetStreamBufferSize(this.sys, &size.filebuffersize, &size.filebuffersizetype));
     return size;
   }
 
-  void Set3DSettings(Settings3D *settings) {
-    assert(FMOD_System_Set3DSettings(this.sys,
-        settings.dopplerscale, settings.distancefactor, settings.rolloffscale) == FMOD_RESULT.OK);
+  void set3DSettings(Settings3D *settings) {
+    valid(FMOD_System_Set3DSettings(this.sys, settings.dopplerscale, settings.distancefactor, settings.rolloffscale));
   }
 
-  Settings3D Get3DSettings() {
+  Settings3D get3DSettings() {
     Settings3D settings;
-    assert(FMOD_System_Get3DSettings(this.sys,
-        &settings.dopplerscale, &settings.distancefactor, &settings.rolloffscale) == FMOD_RESULT.OK);
+    valid(FMOD_System_Get3DSettings(this.sys, &settings.dopplerscale, &settings.distancefactor, &settings.rolloffscale));
     return settings;
   }
 
-  void Set3DNumListeners(int num) {
-    assert(FMOD_System_Set3DNumListeners(this.sys, num) == FMOD_RESULT.OK);
+  void set3DNumListeners(int num) {
+    valid(FMOD_System_Set3DNumListeners(this.sys, num));
   }
 
-  int Get3DNumListeners() {
+  int get3DNumListeners() {
     int num;
-    assert(FMOD_System_Get3DNumListeners(this.sys, &num) == FMOD_RESULT.OK);
+    valid(FMOD_System_Get3DNumListeners(this.sys, &num));
     return num;
   }
 
-  Sound CreateSound(string name_or_data, uint mode=0, FMOD_CREATESOUNDEXINFO *exinfo=null) {
+  Sound createSound(string name_or_data, uint mode=0, FMOD_CREATESOUNDEXINFO *exinfo=null) {
     return new Sound(this, name_or_data, mode, exinfo);
   }
 }
 
 class Sound {
-  FMOD_SOUND *sound;
-  System sys;
+  Channel     channel;
+  FMOD_SOUND  *sound;
 
   this(System sys, string name, uint mode, FMOD_CREATESOUNDEXINFO *exinfo) {
-    this.sys = sys;
-    assert(FMOD_System_CreateSound(this.sys.sys, name.ptr, mode, exinfo, &this.sound) == FMOD_RESULT.OK);
+    valid(FMOD_System_CreateSound(sys.sys, name.ptr, mode, exinfo, &this.sound));
+    valid(FMOD_Sound_SetUserData(this.sound, cast(void*)sys));
   }
 
-  void play(FMOD_CHANNELGROUP *group=null, bool paused=false, FMOD_CHANNEL *channel=null) {
-    assert(FMOD_System_PlaySound(this.sys.sys, this.sound, group, cast(int)paused, &channel) == FMOD_RESULT.OK);
+  ~this() {
+    valid(FMOD_Sound_Release(this.sound));
+  }
+
+  System parent() {
+    System sys;
+    valid(FMOD_Sound_GetUserData(this.sound, cast(void**)sys));
+    return sys;
+  }
+
+  // Get the system object for this sound
+  FMOD_SYSTEM *system() {
+    FMOD_SYSTEM *sys;
+    valid(FMOD_Sound_GetSystemObject(this.sound, &sys));
+    return sys;
+  }
+
+  void play(FMOD_CHANNELGROUP *group=null, bool paused=false) {
+    FMOD_CHANNEL *chan;
+    valid(FMOD_System_PlaySound(this.system, this.sound, group, cast(int)paused, &chan));
+    this.channel = new Channel(chan);
+  }
+
+  void setDefaults(SoundDefaults *def) {
+    valid(FMOD_Sound_SetDefaults(this.sound, def.frequency, def.priority));
+  }
+
+  SoundDefaults getDefaults() {
+    SoundDefaults def;
+    valid(FMOD_Sound_GetDefaults(this.sound, &def.frequency, &def.priority));
+    return def;
+  }
+
+  void set3DDistance(Sound3DDistance *dist) {
+    valid(FMOD_Sound_Set3DMinMaxDistance(this.sound, dist.min, dist.max));
+  }
+
+  Sound3DDistance get3DDistance() {
+    Sound3DDistance dist;
+    valid(FMOD_Sound_Get3DMinMaxDistance(this.sound, &dist.min, &dist.max));
+    return dist;
+  }
+
+  void set3DConeSettings(Sound3DConeSettings *set) {
+    valid(FMOD_Sound_Set3DConeSettings(this.sound, set.insideangle, set.outsideangle, set.outsidevolume));
+  }
+
+  Sound3DConeSettings get3DConeSettings() {
+    Sound3DConeSettings set;
+    valid(FMOD_Sound_Get3DConeSettings(this.sound, &set.insideangle, &set.outsideangle, &set.outsidevolume));
+    return set;
+  }
+
+  void set3DCustomRolloff(FMOD_VECTOR[] points) {
+    valid(FMOD_Sound_Set3DCustomRolloff(this.sound, &points[0], cast(int)points.length));
+  }
+
+  string getName(int length = 64) {
+    char[] str = new char[length];
+    valid(FMOD_Sound_GetName(this.sound, &str[0], length));
+    return cast(string)str;
+  }
+
+  // Returns the length in milliseconds
+  uint getLength() {
+    uint length;
+    valid(FMOD_Sound_GetLength(this.sound, &length, FMOD_TIMEUNIT.MS));
+    return length;
+  }
+
+  SoundFormat getFormat() {
+    SoundFormat fmt;
+    valid(FMOD_Sound_GetFormat(this.sound, fmt.type, fmt.format, &fmt.channels, &fmt.bits));
+    return fmt;
+  }
+
+  float getMusicSpeed() {
+    float speed;
+    valid(FMOD_Sound_GetMusicSpeed(this.sound, &speed));
+    return speed;
+  }
+
+  void setMusicSpeed(float speed) {
+    valid(FMOD_Sound_SetMusicSpeed(this.sound, speed));
+  }
+
+  void setMode(uint mode) {
+    valid(FMOD_Sound_SetMode(this.sound, mode));
+  }
+
+  uint getMode() {
+    uint mode;
+    valid(FMOD_Sound_GetMode(this.sound, &mode));
+    return mode;
+  }
+
+  int getLoopCount() {
+    int count;
+    valid(FMOD_Sound_GetLoopCount(this.sound, &count));
+    return count;
+  }
+
+  void setLoopCount(int count) {
+    valid(FMOD_Sound_SetLoopCount(this.sound, count));
   }
 }
 
-/*
-  FMOD_RESULT FMOD_System_SetDSPBufferSize (FMOD_SYSTEM* system, uint bufferlength, int numbuffers);
-  FMOD_RESULT FMOD_System_GetDSPBufferSize (FMOD_SYSTEM* system, uint* bufferlength, int* numbuffers);
-  FMOD_RESULT FMOD_System_CreateDSPByPlugin (FMOD_SYSTEM* system, uint handle, FMOD_DSP** dsp);
-  FMOD_RESULT FMOD_System_GetDSPInfoByPlugin (FMOD_SYSTEM* system, uint handle, const(FMOD_DSP_DESCRIPTION*)* description);
-  FMOD_RESULT FMOD_System_RegisterCodec (FMOD_SYSTEM* system, FMOD_CODEC_DESCRIPTION* description, uint* handle, uint priority);
-  FMOD_RESULT FMOD_System_RegisterDSP (FMOD_SYSTEM* system, const(FMOD_DSP_DESCRIPTION)* description, uint* handle);
-  FMOD_RESULT FMOD_System_RegisterOutput (FMOD_SYSTEM* system, const(FMOD_OUTPUT_DESCRIPTION)* description, uint* handle);
-  FMOD_RESULT FMOD_System_CreateDSP (FMOD_SYSTEM* system, const(FMOD_DSP_DESCRIPTION)* description, FMOD_DSP** dsp);
-  FMOD_RESULT FMOD_System_CreateDSPByType (FMOD_SYSTEM* system, FMOD_DSP_TYPE type, FMOD_DSP** dsp);
-  FMOD_RESULT FMOD_System_PlayDSP (FMOD_SYSTEM* system, FMOD_DSP* dsp, FMOD_CHANNELGROUP* channelgroup, int paused, FMOD_CHANNEL** channel);
-  FMOD_RESULT FMOD_System_LockDSP (FMOD_SYSTEM* system);
-  FMOD_RESULT FMOD_System_UnlockDSP (FMOD_SYSTEM* system);
-  FMOD_RESULT FMOD_Channel_GetDSPClock (FMOD_CHANNEL* channel, ulong* dspclock, ulong* parentclock);
-  FMOD_RESULT FMOD_Channel_GetDSP (FMOD_CHANNEL* channel, int index, FMOD_DSP** dsp);
-  FMOD_RESULT FMOD_Channel_AddDSP (FMOD_CHANNEL* channel, int index, FMOD_DSP* dsp);
-  FMOD_RESULT FMOD_Channel_RemoveDSP (FMOD_CHANNEL* channel, FMOD_DSP* dsp);
-  FMOD_RESULT FMOD_Channel_GetNumDSPs (FMOD_CHANNEL* channel, int* numdsps);
-  FMOD_RESULT FMOD_Channel_SetDSPIndex (FMOD_CHANNEL* channel, FMOD_DSP* dsp, int index);
-  FMOD_RESULT FMOD_Channel_GetDSPIndex (FMOD_CHANNEL* channel, FMOD_DSP* dsp, int* index);
-  FMOD_RESULT FMOD_Channel_OverridePanDSP (FMOD_CHANNEL* channel, FMOD_DSP* pan);
-  FMOD_RESULT FMOD_ChannelGroup_GetDSPClock (FMOD_CHANNELGROUP* channelgroup, ulong* dspclock, ulong* parentclock);
-  FMOD_RESULT FMOD_ChannelGroup_GetDSP (FMOD_CHANNELGROUP* channelgroup, int index, FMOD_DSP** dsp);
-  FMOD_RESULT FMOD_ChannelGroup_AddDSP (FMOD_CHANNELGROUP* channelgroup, int index, FMOD_DSP* dsp);
-  FMOD_RESULT FMOD_ChannelGroup_RemoveDSP (FMOD_CHANNELGROUP* channelgroup, FMOD_DSP* dsp);
-  FMOD_RESULT FMOD_ChannelGroup_GetNumDSPs (FMOD_CHANNELGROUP* channelgroup, int* numdsps);
-  FMOD_RESULT FMOD_ChannelGroup_SetDSPIndex (FMOD_CHANNELGROUP* channelgroup, FMOD_DSP* dsp, int index);
-  FMOD_RESULT FMOD_ChannelGroup_GetDSPIndex (FMOD_CHANNELGROUP* channelgroup, FMOD_DSP* dsp, int* index);
-  FMOD_RESULT FMOD_ChannelGroup_OverridePanDSP (FMOD_CHANNELGROUP* channelgroup, FMOD_DSP* pan);
-  FMOD_RESULT FMOD_ChannelGroup_AddGroup (FMOD_CHANNELGROUP* channelgroup, FMOD_CHANNELGROUP* group, int propagatedspclock, FMOD_DSPCONNECTION** connection);
-  FMOD_RESULT FMOD_DSP_Release (FMOD_DSP* dsp);
-  FMOD_RESULT FMOD_DSP_GetSystemObject (FMOD_DSP* dsp, FMOD_SYSTEM** system);
-  FMOD_RESULT FMOD_DSP_AddInput (FMOD_DSP* dsp, FMOD_DSP* input, FMOD_DSPCONNECTION** connection, FMOD_DSPCONNECTION_TYPE type);
-  FMOD_RESULT FMOD_DSP_DisconnectFrom (FMOD_DSP* dsp, FMOD_DSP* target, FMOD_DSPCONNECTION* connection);
-  FMOD_RESULT FMOD_DSP_DisconnectAll (FMOD_DSP* dsp, int inputs, int outputs);
-  FMOD_RESULT FMOD_DSP_GetNumInputs (FMOD_DSP* dsp, int* numinputs);
-  FMOD_RESULT FMOD_DSP_GetNumOutputs (FMOD_DSP* dsp, int* numoutputs);
-  FMOD_RESULT FMOD_DSP_GetInput (FMOD_DSP* dsp, int index, FMOD_DSP** input, FMOD_DSPCONNECTION** inputconnection);
-  FMOD_RESULT FMOD_DSP_GetOutput (FMOD_DSP* dsp, int index, FMOD_DSP** output, FMOD_DSPCONNECTION** outputconnection);
-  FMOD_RESULT FMOD_DSP_SetActive (FMOD_DSP* dsp, int active);
-  FMOD_RESULT FMOD_DSP_GetActive (FMOD_DSP* dsp, int* active);
-  FMOD_RESULT FMOD_DSP_SetBypass (FMOD_DSP* dsp, int bypass);
-  FMOD_RESULT FMOD_DSP_GetBypass (FMOD_DSP* dsp, int* bypass);
-  FMOD_RESULT FMOD_DSP_SetWetDryMix (FMOD_DSP* dsp, float prewet, float postwet, float dry);
-  FMOD_RESULT FMOD_DSP_GetWetDryMix (FMOD_DSP* dsp, float* prewet, float* postwet, float* dry);
-  FMOD_RESULT FMOD_DSP_SetChannelFormat (FMOD_DSP* dsp, uint channelmask, int numchannels, FMOD_SPEAKERMODE source_speakermode);
-  FMOD_RESULT FMOD_DSP_GetChannelFormat (FMOD_DSP* dsp, uint* channelmask, int* numchannels, FMOD_SPEAKERMODE* source_speakermode);
-  FMOD_RESULT FMOD_DSP_GetOutputChannelFormat (FMOD_DSP* dsp, uint inmask, int inchannels, FMOD_SPEAKERMODE inspeakermode, uint* outmask, int* outchannels, FMOD_SPEAKERMODE* outspeakermode);
-  FMOD_RESULT FMOD_DSP_Reset (FMOD_DSP* dsp);
-  FMOD_RESULT FMOD_DSP_SetParameterFloat (FMOD_DSP* dsp, int index, float value);
-  FMOD_RESULT FMOD_DSP_SetParameterInt (FMOD_DSP* dsp, int index, int value);
-  FMOD_RESULT FMOD_DSP_SetParameterBool (FMOD_DSP* dsp, int index, int value);
-  FMOD_RESULT FMOD_DSP_SetParameterData (FMOD_DSP* dsp, int index, void* data, uint length);
-  FMOD_RESULT FMOD_DSP_GetParameterFloat (FMOD_DSP* dsp, int index, float* value, char* valuestr, int valuestrlen);
-  FMOD_RESULT FMOD_DSP_GetParameterInt (FMOD_DSP* dsp, int index, int* value, char* valuestr, int valuestrlen);
-  FMOD_RESULT FMOD_DSP_GetParameterBool (FMOD_DSP* dsp, int index, int* value, char* valuestr, int valuestrlen);
-  FMOD_RESULT FMOD_DSP_GetParameterData (FMOD_DSP* dsp, int index, void** data, uint* length, char* valuestr, int valuestrlen);
-  FMOD_RESULT FMOD_DSP_GetNumParameters (FMOD_DSP* dsp, int* numparams);
-  FMOD_RESULT FMOD_DSP_GetParameterInfo (FMOD_DSP* dsp, int index, FMOD_DSP_PARAMETER_DESC** desc);
-  FMOD_RESULT FMOD_DSP_GetDataParameterIndex (FMOD_DSP* dsp, int datatype, int* index);
-  FMOD_RESULT FMOD_DSP_ShowConfigDialog (FMOD_DSP* dsp, void* hwnd, int show);
-  FMOD_RESULT FMOD_DSP_GetInfo (FMOD_DSP* dsp, char* name, uint* version_, int* channels, int* configwidth, int* configheight);
-  FMOD_RESULT FMOD_DSP_GetType (FMOD_DSP* dsp, FMOD_DSP_TYPE* type);
-  FMOD_RESULT FMOD_DSP_GetIdle (FMOD_DSP* dsp, int* idle);
-  FMOD_RESULT FMOD_DSP_SetUserData (FMOD_DSP* dsp, void* userdata);
-  FMOD_RESULT FMOD_DSP_GetUserData (FMOD_DSP* dsp, void** userdata);
-  FMOD_RESULT FMOD_DSP_SetMeteringEnabled (FMOD_DSP* dsp, int inputEnabled, int outputEnabled);
-  FMOD_RESULT FMOD_DSP_GetMeteringEnabled (FMOD_DSP* dsp, int* inputEnabled, int* outputEnabled);
-  FMOD_RESULT FMOD_DSP_GetMeteringInfo (FMOD_DSP* dsp, FMOD_DSP_METERING_INFO* inputInfo, FMOD_DSP_METERING_INFO* outputInfo);
-  FMOD_RESULT FMOD_DSPConnection_GetInput (FMOD_DSPCONNECTION* dspconnection, FMOD_DSP** input);
-  FMOD_RESULT FMOD_DSPConnection_GetOutput (FMOD_DSPCONNECTION* dspconnection, FMOD_DSP** output);
-  FMOD_RESULT FMOD_DSPConnection_SetMix (FMOD_DSPCONNECTION* dspconnection, float volume);
-  FMOD_RESULT FMOD_DSPConnection_GetMix (FMOD_DSPCONNECTION* dspconnection, float* volume);
-  FMOD_RESULT FMOD_DSPConnection_SetMixMatrix (FMOD_DSPCONNECTION* dspconnection, float* matrix, int outchannels, int inchannels, int inchannel_hop);
-  FMOD_RESULT FMOD_DSPConnection_GetMixMatrix (FMOD_DSPCONNECTION* dspconnection, float* matrix, int* outchannels, int* inchannels, int inchannel_hop);
-  FMOD_RESULT FMOD_DSPConnection_GetType (FMOD_DSPCONNECTION* dspconnection, FMOD_DSPCONNECTION_TYPE* type);
-  FMOD_RESULT FMOD_DSPConnection_SetUserData (FMOD_DSPCONNECTION* dspconnection, void* userdata);
-  FMOD_RESULT FMOD_DSPConnection_GetUserData (FMOD_DSPCONNECTION* dspconnection, void** userdata);
-*/
+class Channel {
+  FMOD_CHANNEL *channel;
+
+  this(FMOD_CHANNEL *chan) {
+    this.channel = chan;
+  }
+
+  FMOD_SYSTEM *system() {
+    FMOD_SYSTEM *sys;
+    valid(FMOD_Channel_GetSystemObject(this.channel, &sys));
+    return sys;
+  }
+
+  void stop() {
+    valid(FMOD_Channel_Stop(this.channel));
+  }
+
+  void setPaused(bool paused) {
+    valid(FMOD_Channel_SetPaused(this.channel, cast(int)paused));
+  }
+
+  bool getPaused() {
+    int paused;
+    valid(FMOD_Channel_GetPaused(this.channel, &paused));
+    return cast(bool)paused;
+  }
+
+  void setVolume(float volume) {
+    valid(FMOD_Channel_SetVolume(this.channel, volume));
+  }
+
+  float getVolume() {
+    float volume;
+    valid(FMOD_Channel_GetVolume(this.channel, &volume));
+    return volume;
+  }
+
+  void setVolumeRamp(int ramp) {
+    valid(FMOD_Channel_SetVolumeRamp(this.channel, ramp));
+  }
+
+  int getVolumeRamp() {
+    int ramp;
+    valid(FMOD_Channel_GetVolumeRamp(this.channel, &ramp));
+    return ramp;
+  }
+
+  float getAudibility() {
+    float aud;
+    valid(FMOD_Channel_GetAudibility(this.channel, &aud));
+    return aud;
+  }
+
+  void setPitch(float pitch) {
+    valid(FMOD_Channel_SetPitch(this.channel, pitch));
+  }
+
+  float getPitch() {
+    float pitch;
+    valid(FMOD_Channel_GetPitch(this.channel, &pitch));
+    return pitch;
+  }
+
+  void setMute(bool mute) {
+    valid(FMOD_Channel_SetMute(this.channel, cast(int)mute));
+  }
+
+  bool getMute() {
+    int mute;
+    valid(FMOD_Channel_GetMute(this.channel, &mute));
+    return cast(bool)mute;
+  }
+
+  float getReverbProperties(int instance) {
+    float wet;
+    valid(FMOD_Channel_GetReverbProperties(this.channel, instance, &wet));
+    return wet;
+  }
+
+  void setReverbProperties(int instance, float wet) {
+    valid(FMOD_Channel_SetReverbProperties(this.channel, instance, wet));
+  }
+
+  void setLowPassGain(float gain) {
+    valid(FMOD_Channel_SetLowPassGain(this.channel, gain));
+  }
+
+  float getLowPassGain() {
+    float gain;
+    valid(FMOD_Channel_GetLowPassGain(this.channel, &gain));
+    return gain;
+  }
+}
+
