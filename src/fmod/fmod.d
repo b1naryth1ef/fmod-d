@@ -137,7 +137,7 @@ class System {
     return settings;
   }
 
-  void init(int maxchannels, uint flags, void *extradriverdata) {
+  void init(int maxchannels, uint flags=FMOD_INIT_NORMAL, void *extradriverdata=null) {
     valid(FMOD_System_Init(this.sys, maxchannels, flags, extradriverdata));
   }
 
