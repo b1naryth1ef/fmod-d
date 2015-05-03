@@ -235,7 +235,8 @@ class Sound {
 
   void play(FMOD_CHANNELGROUP *group=null, bool paused=false) {
     FMOD_CHANNEL *chan;
-    valid(FMOD_System_PlaySound(this.system, this.sound, group, cast(int)paused, &chan));
+    auto res = FMOD_System_PlaySound(this.system, this.sound, group, cast(int)paused, &chan);
+    valid(res);
     this.channel = new Channel(chan);
   }
 
