@@ -1,6 +1,6 @@
 module fmod.fmod;
 
-import derelict.fmod.fmod;
+public import derelict.fmod.fmod;
 
 // Wraps SoftwareFormat calls
 struct SoftwareFormat {
@@ -78,7 +78,7 @@ class System {
   FMOD_SYSTEM *sys;
 
   this() {
-     valid(FMOD_System_Create(&this.sys));
+    valid(FMOD_System_Create(&this.sys));
   }
 
   ~this() {
