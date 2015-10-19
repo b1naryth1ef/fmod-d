@@ -5,6 +5,6 @@
   "homepage": "http://github.com/b1naryth1ef/fmod-d",
   "license": "GPL-2.0",
   "dependencies": {
-    "derelict-fmod": "~>0.1.0"
+    "derelict-fmod": "~>1.1.1"
   }
 }
